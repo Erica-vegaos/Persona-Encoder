@@ -1,15 +1,16 @@
-# app.py // v0.3.1（更新 Tab1 + 開頭）
+# app.py // v0.3.2-clean
 # Author: Vega (for Eri)
-# Update: 加入 Tab1 雷達圖配點器，改善寬度問題，移除 step 控制；Tab2 藍色 slider 樣式修正
 
 import streamlit as st
 import os
 import json
 import plotly.graph_objects as go
-from utils.helpers import load_default_profile, compute_radar_chart
-from config import SETTINGS, RADAR_LABELS, DEFAULT_RADAR_VALUES
-from api.tx27_client import analyze_text
-from api.gpt_client import gpt_explain
+from datetime import datetime
+from streamlit_lottie import st_lottie
+from utils.usage_logger import log_usage
+from PIL import Image
+
+
 
 # ✅ 必須是第一個 st. 指令，放在所有 st.xx 之前
 st.set_page_config(
@@ -120,10 +121,10 @@ if "profile" not in st.session_state:
 # === Tabs 定義 ===
 tabs = st.tabs(
     [
-        "🧊 編碼說明",
-        "🧬 AI  人格",
-        "🎚️ User配點",
-        "🧾 文字敘述",
+        "說明",
+        "AI  人格",
+        "User配點",
+        "文字敘述",
         "📥 結果匯出",
     ]
 )
@@ -131,24 +132,43 @@ tabs = st.tabs(
 
 # === Tab 0: 開場動畫 + 說明 ===
 with tabs[0]:
-    st.title("ECP0🧊開始編碼你的語氣")
-    
-    # 加入動畫
+    st.title("ECP0🧬編碼語氣")
+
+    # 安全載入動畫 + 手機 fallback 圖像
     lottie_path = os.path.join("animations", "Technology isometric ai robot brain.json")
-    lottie_json = load_lottiefile(lottie_path)
-    st_lottie(
-        lottie_json,
-        speed=1,
-        loop=True,
-        quality="high",
-        height=320,
-    )
+    fallback_img_path = os.path.join("static", "animation_placeholder.png")  # 📌 確保這張圖存在
+
+    try:
+        lottie_json = load_lottiefile(lottie_path)
+        if lottie_json:
+            st_lottie(
+                lottie_json,
+                speed=1,
+                loop=True,
+                quality="high",
+                height=320,
+            )
+        else:
+            raise ValueError("空的 Lottie JSON")
+    except Exception as e:
+        st.image(fallback_img_path, caption="🧊 載入動畫失敗，改顯示圖像")
+
 
     st.markdown(
         """
-        這是一個互動式人格建構器，您可以透過以下步驟設定、調整、導出個人風格資料。  
-        所有輸入皆保存在本機，無需上網或串接 GPT API。
-        """
+    歡迎使用這個快速的 AI語氣調整 生成器 <br>
+    想要微調語氣、打造個人風格？動動滑桿就搞定！<br><br>
+
+    ✅ **快速開始**：選 AI 人格 + 自訂配點<br>
+    💡 **進階玩法**：加上自我描述文字，生成更貼近你的 LLM 輸出風格<br><br>
+
+    **資料隱私聲明**<br>
+    本工具所有輸入與操作記錄皆儲存在使用者瀏覽器端的本機暫存區域，<br>
+    系統不會上傳、儲存或傳送任何輸入內容至伺服器或第三方服務。<br>
+    本生成器亦無法讀取或記憶使用者的個人資訊。<br>
+    使用本工具不涉及任何形式的資料傳輸行為，請放心使用。
+    """,
+    unsafe_allow_html=True  # ← 開啟 HTML 標籤支援
     )
     st.info("👉 使用上方選單切換頁面開始操作。")
     st.markdown("---")
@@ -227,8 +247,8 @@ with tabs[0]:
 
 # === Tab 1：AI 語氣配點器（新版左右分欄）===
 with tabs[1]:
-    st.header("🧬 AI 語氣配點器")
-    st.markdown("選擇你的 AI 性格：")
+    st.header("AI 語氣配點器")
+    st.markdown("選擇你的 AI 性格，問號可參考輸出影響。")
 
 
     # === 中文顯示用的 UI label 映射表 ===
@@ -344,7 +364,7 @@ with tabs[1]:
                 angularaxis=dict(
                     rotation=90,
                     direction="clockwise",
-                    tickfont=dict(size=13),
+                    tickfont=dict(size=13, color='#333333'),  # 加上這行
                 ),
                 bgcolor='rgba(0,0,0,0)'
             ),
@@ -352,14 +372,14 @@ with tabs[1]:
             height=420,
             margin=dict(l=30, r=30, t=30, b=30),
             paper_bgcolor='white',
-            font=dict(family="Orbitron, Arial", size=14)
+            font=dict(family="Orbitron, Arial", size=14, color='#333333')
         )
 
         st.plotly_chart(radar, use_container_width=True, config={"staticPlot": True})
 
     # === Internal Log: Tab1 結構設定完成（左右欄 / tone_pref 存入）===
 
-    st.info("移至問號看參考輸出影響。配點已即時儲存，可往下一步或直接切至 Tab4 導出。")
+    st.info("配點已即時儲存，可往下一步或直接切至 Tab4 導出。")
 
 
 # === Tab 2: 使用者自我配點 ===
@@ -477,7 +497,7 @@ with tabs[2]:
                 angularaxis=dict(
                     rotation=90,
                     direction="clockwise",
-                    tickfont=dict(size=13),
+                    tickfont=dict(size=13, color='#333333'),  # 加上這行
                 ),
                 bgcolor='rgba(0,0,0,0)'
             ),
@@ -485,7 +505,7 @@ with tabs[2]:
             height=420,
             margin=dict(l=30, r=30, t=30, b=30),
             paper_bgcolor='white',
-            font=dict(family="Orbitron, Arial", size=14)
+            font=dict(family="Orbitron, Arial", size=14, color='#333333')  # 加上這行
         )
 
         st.plotly_chart(radar, use_container_width=True, config={"staticPlot": True})
