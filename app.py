@@ -3,13 +3,20 @@
 # Update: 加入 Tab1 雷達圖配點器，改善寬度問題，移除 step 控制；Tab2 藍色 slider 樣式修正
 
 import streamlit as st
-st.set_page_config(page_title="Eriga Persona Encoder", layout="centered")
-import plotly.graph_objects as go
-from datetime import datetime
-import json
-from streamlit_lottie import st_lottie
 import os
-from utils.usage_logger import log_usage
+import json
+import plotly.graph_objects as go
+from utils.helpers import load_default_profile, compute_radar_chart
+from config import SETTINGS, RADAR_LABELS, DEFAULT_RADAR_VALUES
+from api.tx27_client import analyze_text
+from api.gpt_client import gpt_explain
+
+# ✅ 必須是第一個 st. 指令，放在所有 st.xx 之前
+st.set_page_config(
+    page_title="Eriga Persona Encoder",
+    layout="centered"
+)
+
 
 # === 問號 icon 藍色配色 ===
 st.markdown("""
@@ -90,13 +97,6 @@ def build_intro_sentences(i1, i2, i3, i4, i5, i6):
         result.append(sentence)
 
     return result
-
-
-
-
-
-# === 頁面配置 ===
-st.set_page_config(page_title="Eriga Persona Encoder", layout="centered")
 
 # === Session 初始化區塊 // v0.3.2 ===
 
