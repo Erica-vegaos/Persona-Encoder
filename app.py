@@ -3,6 +3,7 @@
 # Update: 加入 Tab1 雷達圖配點器，改善寬度問題，移除 step 控制；Tab2 藍色 slider 樣式修正
 
 import streamlit as st
+st.set_page_config(page_title="Eriga Persona Encoder", layout="centered")
 import plotly.graph_objects as go
 from datetime import datetime
 import json
